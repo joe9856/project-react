@@ -65,6 +65,15 @@ function Home() {
   const handleShowCheckInTeacher = (classroomId) => {
     navigate(`/showcheckin/${classroomId}`); // เชื่อมโยงไปยังหน้าการเช็คชื่อ
   };
+
+  const handleShowDetail = (classroomId) => {
+    navigate(`/showdetail/${classroomId}`); // เชื่อมโยงไปยังหน้าการเช็คชื่อ
+  };
+
+  // สมมติให้มีค่า cno แบบ static หรือมาจากการเลือกของผู้ใช้
+const goToCreateQuestion = (cid, cno) => {
+  navigate(`/question/${cid}/checkin/${cno}`);
+};
   
 
   if (loading) {
@@ -77,30 +86,62 @@ function Home() {
 
   return (
     <div style={{ padding: "20px" }}>
-      <Typography variant="h4" gutterBottom align="center" color="primary">
-        ยินดีต้อนรับ, {user ? user.displayName : "ผู้ใช้"}
-      </Typography>
+      
+      <Box
+        sx={{
+          border: "2px solid #1976d2", // กรอบสีฟ้า
+          borderRadius: "12px", // มุมโค้งมน
+          padding: "8px", // ระยะห่างภายในกรอบ
+          boxShadow: 2, // เงา
+          maxWidth: "40%", // กำหนดความกว้างสูงสุด
+          margin: "0 auto", // จัดตำแหน่งกลาง
+          textAlign: "center", // จัดข้อความให้อยู่กลาง
+        }}
+      >
+        <Typography variant="h4" gutterBottom align="center" color="primary" sx={{ fontSize: "30px" }}>
+          ยินดีต้อนรับ, {user ? user.displayName : "ผู้ใช้"}
+        </Typography>
+      </Box>
 
-      <Typography variant="h6" gutterBottom>
-        ข้อมูลห้องเรียนทั้งหมด
-      </Typography>
-
-      <button type="button" onClick={handleGoToAddClassroom} className="btn btn-outline-secondary w-20">
-        เพิ่มวิชา
-      </button>
-
+  
+      <Box sx={{ border: "2px solidrgb(226, 226, 226)", borderRadius: "8px", padding: "8px", maxWidth: "300px", margin: "20px 0", boxShadow: 2 }}>
+        <Typography variant="h6" gutterBottom align="center" color="textPrimary">
+          ข้อมูลห้องเรียนทั้งหมด
+        </Typography>
+      </Box>
+  
+      {/* ปุ่มเพิ่มวิชา */}
+      <Box sx={{ textAlign: "center", marginBottom: 4 }}>
+        <Button
+          variant="contained"
+          color="success"
+          onClick={handleGoToAddClassroom}
+          sx={{
+            padding: "12px 20px",
+            fontSize: "16px",
+            fontWeight: "bold",
+            borderRadius: 2,
+            boxShadow: 2,
+            "&:hover": { backgroundColor: "#388e3c" }, // สีเขียวเข้มเมื่อ hover
+          }}
+        >
+          + เพิ่มวิชา
+        </Button>
+      </Box>
+  
       {classrooms.length > 0 ? (
         <Grid container spacing={3} justifyContent="center">
           {classrooms.map((classroom) => (
-            <Grid item xs={12} sm={6} md={4} key={classroom.id}>
+            <Grid item xs={12} sm={6} md={3} key={classroom.id}>
               <Card
                 sx={{
                   maxWidth: 345,
-                  boxShadow: 3,
-                  borderRadius: 2,
-                  transition: "transform 0.2s",
+                  boxShadow: 4,
+                  borderRadius: 3,
+                  transition: "transform 0.3s, box-shadow 0.3s",
                   "&:hover": {
                     transform: "scale(1.05)",
+                    boxShadow: 6,
                   },
                 }}
               >
@@ -121,37 +162,56 @@ function Home() {
                   <Typography variant="body2" color="text.secondary">
                     ห้องเรียน: {classroom.info?.room}
                   </Typography>
-
-                  {/* เพิ่มปุ่ม "เพิ่มนักเรียน" */}
-                  <Box sx={{ marginTop: 2 }}>
+  
+                  {/* ปุ่มทั้งหมดถูกจัดเรียงให้สวยขึ้น */}
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, marginTop: 2 }}>
                     <Button
                       variant="contained"
-                      color="primary"
-                      onClick={() => handleGoToAddStudent(classroom.id)}
+                      color="info"
+                      onClick={() => handleShowDetail(classroom.id)}
+                      sx={{
+                        fontWeight: "bold",
+                        "&:hover": { backgroundColor: "#0288d1" },
+                      }}
                     >
-                      เพิ่มนักเรียน
+                      ℹ️ ดูรายละเอียดวิชา
                     </Button>
-                  </Box>
-                  {/* เพิ่มปุ่ม "เช็คชื่อ" */}
-                  <Box sx={{ marginTop: 2 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleGoToCreateCheckInTeacher(classroom.id)} // ใช้ชื่อฟังก์ชันใหม่
-                  >
-                    สร้างเช็คชื่อ
-                  </Button>
-                  </Box>
-
-                  {/* เพิ่มปุ่ม "เช็คชื่อ" */}
-                  <Box sx={{ marginTop: 2 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleShowCheckInTeacher(classroom.id)} // ใช้ชื่อฟังก์ชันใหม่
-                  >
-                    ดูผลการเช็คชื่อ
-                  </Button>
+  
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      onClick={() => goToCreateQuestion(classroom.id, 1)}
+                      sx={{
+                        fontWeight: "bold",
+                        "&:hover": { backgroundColor: "#6d1b7b" },
+                      }}
+                    >
+                      ✍️ เพิ่มคำถาม
+                    </Button>
+  
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      onClick={() => handleGoToCreateCheckInTeacher(classroom.id)}
+                      sx={{
+                        fontWeight: "bold",
+                        "&:hover": { backgroundColor: "#f57c00" },
+                      }}
+                    >
+                      ✅ สร้างเช็คชื่อ
+                    </Button>
+  
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={() => handleShowCheckInTeacher(classroom.id)}
+                      sx={{
+                        fontWeight: "bold",
+                        "&:hover": { backgroundColor: "#d32f2f" },
+                      }}
+                    >
+                      📊 ดูผลการเช็คชื่อ
+                    </Button>
                   </Box>
                 </CardContent>
               </Card>
@@ -167,6 +227,7 @@ function Home() {
       )}
     </div>
   );
+  
 }
 
 export default Home;

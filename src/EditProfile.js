@@ -40,6 +40,7 @@ const EditProfile = ({ userData, onSave }) => {
     try {
       await handleSave({
         displayName: formData.displayName,
+        email: formData.email,
         photoURL: formData.photoURL,
       });
   
@@ -102,8 +103,8 @@ const EditProfile = ({ userData, onSave }) => {
               type="email"
               name="email"
               value={formData.email}
+              onChange={handleChange}
               className="form-control bg-light"
-              disabled
             />
           </div>
 

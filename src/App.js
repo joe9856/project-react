@@ -13,6 +13,14 @@ import CreateCheckIn from './CreateCheckIn';
 import ShowCheckIn from './ShowCheckIn';
 import ShowCheckInStudents from './ShowCheckInStudents'; // นำเข้า ShowCheckInStudents
 import ClassroomManagement from './ClassroomManagement';  // นำเข้า ClassroomManagement    
+import ShowDetailClassroom from './ShowDetailClassroom'; 
+import CheckInManagement from './CheckInManagement'; 
+import CreateQuestion from './CreateQuestion'; 
+import QuestionAnswers from './QuestionAnswers'; // ปรับเส้นทางตามโครงสร้างไฟล์ของคุณ
+
+// เพิ่มในส่วนของการกำหนดเส
+
+
 function App() {
   return (
     <Router>
@@ -26,10 +34,15 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/addclassroom" element={<AddClassroom />} />
         <Route path="/addstudent/:cid" element={<AddStudent />} />  {/* เพิ่มเส้นทางสำหรับ AddStudent */}
-        <Route path="/createcheckin/:cid" element={<CreateCheckIn />} /> 
+        <Route path="/createcheckin/:cid" element={<CreateCheckIn />} />
         <Route path="/showcheckin/:cid" element={<ShowCheckIn />} />
-        <Route path="/showcheckinstudents/:cid" element={<ShowCheckInStudents />} /> {/* หน้า ShowCheckInStudents */}
+        <Route path="/showcheckinstudents/:cid/checkin/:cno" element={<ShowCheckInStudents />} /> {/* แก้ไขเป็น element */}
         <Route path="/classroommanagement/:cid" element={<ClassroomManagement />} />
+        <Route path="/showdetail/:cid" element={<ShowDetailClassroom />} />
+        <Route path="/checkinmanagement/:cid/checkin/:cno" element={<CheckInManagement />} />
+        <Route path="/question/:cid/checkin/:cno" element={<CreateQuestion />} />
+        <Route path="/classroom/:cid/checkin/:checkInId/answers" element={<QuestionAnswers />} />
+          
       </Routes>
     </Router>
   );

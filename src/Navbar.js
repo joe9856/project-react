@@ -27,6 +27,7 @@ function Navbar() {
   const handleLogout = async () => {
     try {
       await signOut(auth); // ทำการออกจากระบบ
+      navigate("/login"); // เปลี่ยนเส้นทางไปยังหน้าล็อกอิน
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -38,31 +39,56 @@ function Navbar() {
   };
 
   return (
-    <AppBar position="static">
+    <AppBar position="static" sx={{ backgroundColor: "#3f51b5" }}>
       <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
-          ระบบการจัดการห้องเรียน
+        <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: "bold" }}>
+          ระบบจัดการห้องเรียน
         </Typography>
         {user ? (
           <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Typography variant="body1" sx={{ marginRight: 2 }}>
+            <Typography variant="body1" sx={{ marginRight: 2, color: "#fff" }}>
               {user.displayName}
             </Typography>
             <Avatar
               alt={user.displayName}
               src={user.photoURL || "https://via.placeholder.com/40"}
-              sx={{ marginRight: 2 }}
+              sx={{
+                marginRight: 2,
+                width: 40,
+                height: 40,
+                border: "2px solid #fff", // เพิ่มเส้นขอบรอบๆ รูปโปรไฟล์
+              }}
             />
             {/* ปุ่มแก้ไขโปรไฟล์ */}
-            <Button color="inherit" onClick={handleProfileEdit} sx={{ marginRight: 2 }}>
+            <Button
+              color="inherit"
+              onClick={handleProfileEdit}
+              sx={{
+                marginRight: 2,
+                backgroundColor: "#fff",
+                color: "#3f51b5",
+                "&:hover": {
+                  backgroundColor: "#f0f0f0",
+                },
+              }}
+            >
               แก้ไขโปรไฟล์
             </Button>
-            <Button color="inherit" onClick={handleLogout}>
+            <Button
+              color="inherit"
+              onClick={handleLogout}
+              sx={{
+                backgroundColor: "#e53935", // เปลี่ยนสีเป็นแดง
+                "&:hover": {
+                  backgroundColor: "#d32f2f", // เปลี่ยนสีเมื่อ hover
+                },
+              }}
+            >
               ออกจากระบบ
             </Button>
           </Box>
         ) : (
-          <Button color="inherit" href="/login">
+          <Button color="inherit" href="/login" sx={{ fontWeight: "bold" }}>
             เข้าสู่ระบบ
           </Button>
         )}
