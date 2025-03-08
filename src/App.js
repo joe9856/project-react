@@ -1,5 +1,5 @@
 import './App.css';
-import { HashRouter  as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Login from './Login';
 import EditProfile from './EditProfile'; // นำเข้า EditProfile คอมโพเนนต์
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -24,7 +24,7 @@ import EditClassroom from './EditClassroom';
 
 function App() {
   return (
-    <Router >
+    <Router>
       <Navbar /> {/* แสดง Navbar */}
       <Routes>
         <Route path="/" element={<Login />} />
@@ -44,8 +44,6 @@ function App() {
         <Route path="/question/:cid/checkin/:cno" element={<CreateQuestion />} />
         <Route path="/questionAnswers/:cid/checkin/:checkInId/answers" element={<QuestionAnswers />} />
         <Route path="/classroom/:cid/edit" element={<EditClassroom />} />
-
-      
       </Routes>
     </Router>
   );
