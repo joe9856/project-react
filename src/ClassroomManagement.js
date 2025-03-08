@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { db } from "./firebase";
 import { QRCodeCanvas } from "qrcode.react";
-import { collection, doc, getDocs, getDoc } from "firebase/firestore";
+import { collection, doc, getDocs, getDoc, onSnapshot } from "firebase/firestore";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 
@@ -20,58 +20,86 @@ const ClassroomManagement = () => {
       return;
     }
 
-    const fetchClassroomData = async () => {
-      try {
-        // ดึงข้อมูลห้องเรียน
-        const classroomRef = doc(db, "classroom", cid);
-        const classroomSnap = await getDoc(classroomRef);
+    // ดึงข้อมูลห้องเรียนแบบ Realtime
+    const classroomRef = doc(db, "classroom", cid);
+    const unsubscribeClassroom = onSnapshot(classroomRef, (classroomSnap) => {
+      if (classroomSnap.exists()) {
+        setClassroom(classroomSnap.data());
+      } else {
+        console.log("No such classroom!");
+      }
+    });
 
-        if (classroomSnap.exists()) {
-          setClassroom(classroomSnap.data());
-        } else {
-          console.log("No such classroom!");
-        }
-
-        // ดึงข้อมูล Check-in ล่าสุด
-        const checkinRef = collection(db, "classroom", cid, "checkin");
-        const checkinSnap = await getDocs(checkinRef);
-
-        if (!checkinSnap.empty) {
-          const lastCheckin = checkinSnap.docs[checkinSnap.docs.length - 1]; // ดึงข้อมูลรอบล่าสุด
-          const lastCheckinData = await getDoc(
-            doc(db, `classroom/${cid}/checkin/${lastCheckin.id}`)
-          );
-
+    // ดึงข้อมูล Check-in ล่าสุดแบบ Realtime
+    const checkinRef = collection(db, "classroom", cid, "checkin");
+    const unsubscribeCheckin = onSnapshot(checkinRef, async (checkinSnap) => {
+      if (!checkinSnap.empty) {
+        const lastCheckin = checkinSnap.docs[checkinSnap.docs.length - 1]; // ดึงข้อมูลรอบล่าสุด
+        
+        // ดึงข้อมูลรายละเอียด check-in ล่าสุดแบบ Realtime
+        const lastCheckinRef = doc(db, `classroom/${cid}/checkin/${lastCheckin.id}`);
+        const unsubscribeLastCheckinData = onSnapshot(lastCheckinRef, (lastCheckinData) => {
           if (lastCheckinData.exists()) {
             setCheckinCode(lastCheckinData.data().code);
             setCheckinNumber(parseInt(lastCheckin.id)); // ตั้งค่าหมายเลขการเช็คชื่อ
           }
-        }
+        });
+      }
+    });
 
-        // ดึงข้อมูลนักเรียนที่เช็คชื่อแล้ว
-        const studentsRef = collection(
-          db,
-          `classroom/${cid}/checkin/${checkinNumber}/students`
-        );
-        const studentsSnap = await getDocs(studentsRef);
+    // ดึงข้อมูลนักเรียนที่เช็คชื่อแล้วแบบ Realtime
+    const fetchStudents = () => {
+      if (!checkinNumber) return null;
+      
+      const studentsRef = collection(
+        db,
+        `classroom/${cid}/checkin/${checkinNumber}/students`
+      );
+      return onSnapshot(studentsRef, (studentsSnap) => {
         const studentsList = studentsSnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
         setStudents(studentsList);
-      } catch (error) {
-        console.error("Error fetching classroom data:", error.message);
-      }
+      });
     };
 
-    fetchClassroomData();
+    // เริ่มดึงข้อมูลนักเรียน
+    const unsubscribeStudents = fetchStudents();
+
+    // Clean up subscriptions when component unmounts
+    return () => {
+      unsubscribeClassroom();
+      unsubscribeCheckin();
+      if (unsubscribeStudents) unsubscribeStudents();
+    };
+  }, [cid]);
+
+  // เมื่อ checkinNumber เปลี่ยน ให้ดึงข้อมูลนักเรียนใหม่
+  useEffect(() => {
+    if (!cid || !checkinNumber) return;
+
+    const studentsRef = collection(
+      db,
+      `classroom/${cid}/checkin/${checkinNumber}/students`
+    );
+    
+    const unsubscribeStudents = onSnapshot(studentsRef, (studentsSnap) => {
+      const studentsList = studentsSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setStudents(studentsList);
+    });
+
+    return () => {
+      unsubscribeStudents();
+    };
   }, [cid, checkinNumber]);
 
-   
   const goToCreateQuestion = (cid, checkinNumber) => {
     navigate(`/question/${cid}/checkin/${checkinNumber}`);
   };
-  
 
   if (!cid) {
     return (

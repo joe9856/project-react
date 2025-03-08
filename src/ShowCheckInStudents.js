@@ -1,46 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Button, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, CircularProgress } from '@mui/material';
 import { useParams } from 'react-router-dom';
-import { db } from './firebase'; // Import การเชื่อมต่อกับ Firestore
-import { collection, getDocs } from 'firebase/firestore';
+import { db } from './firebase'; 
+import { collection, onSnapshot } from 'firebase/firestore';
 
 const ShowCheckInStudents = () => {
-    const { cid, cno } = useParams();  // ดึง classroom ID และ checkin ID จาก URL params
-    console.log('Classroom ID:', cid); // ตรวจสอบค่า cid
-    console.log('Check-in ID:', cno); // ตรวจสอบค่า cno
-    const [students, setStudents] = useState([]);  // เปลี่ยนเป็น array เพื่อเก็บข้อมูลนักเรียนหลายคน
+    const { cid, cno } = useParams();  
+    console.log('Classroom ID:', cid); 
+    console.log('Check-in ID:', cno); 
+    const [students, setStudents] = useState([]);  
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);  // เพิ่มสถานะสำหรับการจัดการข้อผิดพลาด
+    const [error, setError] = useState(null);
 
-    // ฟังก์ชันดึงข้อมูลนักเรียนที่เช็คชื่อในแต่ละรอบ
-    const fetchCheckInStudents = async () => {
-        try {
-            // ดึงข้อมูลจาก collection ของ students ที่เช็คชื่อในรอบนี้
-            const studentsRef = collection(db, `classroom/${cid}/checkin/${cno}/students`);
-            const studentSnap = await getDocs(studentsRef);
-
-            // ตรวจสอบว่าได้ข้อมูลมาหรือไม่
-            if (!studentSnap.empty) {
-                // แปลงข้อมูลที่ได้เป็น array
-                const studentsList = studentSnap.docs.map(doc => doc.data());
+    // ฟังก์ชันดึงข้อมูลนักเรียนที่เช็คชื่อในแต่ละรอบในแบบเรียลไทม์
+    useEffect(() => {
+        const studentsRef = collection(db, `classroom/${cid}/checkin/${cno}/students`);
+        
+        const unsubscribe = onSnapshot(studentsRef, (snapshot) => {
+            if (!snapshot.empty) {
+                const studentsList = snapshot.docs.map(doc => doc.data());
                 setStudents(studentsList);
-                setError(null);  // ล้างข้อผิดพลาดหากดึงข้อมูลสำเร็จ
+                setError(null);
             } else {
-                setStudents([]);  // หากไม่มีข้อมูลนักเรียน
+                setStudents([]);
                 setError('ไม่พบข้อมูลนักเรียนในรอบนี้');
             }
-            
-        } catch (error) {
+            setLoading(false);
+        }, (error) => {
             console.error('Error fetching students data:', error);
             setError('เกิดข้อผิดพลาดในการดึงข้อมูลนักเรียน');
-        } finally {
             setLoading(false);
-        }
-    };
+        });
 
-    useEffect(() => {
-        fetchCheckInStudents();
-    }, [cid, cno]);  // เพิ่ม cid และ cno ใน dependencies ของ useEffect
+        // Cleanup subscription on unmount
+        return () => unsubscribe();
+    }, [cid, cno]);
 
     return (
         <Box mt={5} p={2}>
@@ -53,7 +47,7 @@ const ShowCheckInStudents = () => {
                     <CircularProgress />
                 </Box>
             ) : error ? (
-                <Typography variant="body1" align="center" color="error">{error}</Typography> // แสดงข้อผิดพลาดหากมี
+                <Typography variant="body1" align="center" color="error">{error}</Typography>
             ) : (
                 students.length > 0 ? (
                     <TableContainer>
@@ -64,7 +58,6 @@ const ShowCheckInStudents = () => {
                                     <TableCell>รหัสนักเรียน</TableCell>
                                     <TableCell>ชื่อนักเรียน</TableCell>
                                     <TableCell>เวลาที่เข้ามาเช็คชื่อ</TableCell>
-                                    
                                 </TableRow>
                             </TableHead>    
                             <TableBody>
@@ -80,7 +73,7 @@ const ShowCheckInStudents = () => {
                         </Table>
                     </TableContainer>
                 ) : (
-                    <Typography variant="body1" align="center">ไม่พบข้อมูลนักเรียนในรอบนี้</Typography>  // กรณีที่ไม่มีนักเรียน
+                    <Typography variant="body1" align="center">ไม่พบข้อมูลนักเรียนในรอบนี้</Typography>
                 )
             )}
             <Box mt={4} textAlign="center">

@@ -1,9 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { db } from "./firebase"; 
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore"; 
-import { Card, CardContent, CardMedia, Grid, Typography, Box, CircularProgress, Button } from "@mui/material";
+import { db } from "./firebase";
+import {
+  collection,
+  query,
+  onSnapshot,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+import {
+  Card,
+  CardContent,
+  CardMedia,
+  Grid,
+  Typography,
+  Box,
+  CircularProgress,
+  Button,
+} from "@mui/material";
 import { Link } from "react-router-dom";
-import { getAuth } from "firebase/auth"; // ใช้เพื่อดึง UID ของผู้ใช้ปัจจุบัน
+import { getAuth } from "firebase/auth";
 
 function ClassroomList() {
   const [classrooms, setClassrooms] = useState([]);
@@ -22,7 +37,7 @@ function ClassroomList() {
       }
 
       const uid = user.uid;
-      const userClassroomRef = doc(db, `users/${uid}/classroom/classroom_id`); // แทน classroom_id ด้วย CID จริง
+      const userClassroomRef = doc(db, `users/${uid}/classroom/classroom_id`); // Replace with actual CID
 
       try {
         const docSnap = await getDoc(userClassroomRef);
@@ -42,27 +57,25 @@ function ClassroomList() {
 
   useEffect(() => {
     if (userStatus === 1) {
-      const fetchClassrooms = async () => {
-        try {
-          const q = query(collection(db, "classroom"));
-          const querySnapshot = await getDocs(q);
+      const q = query(collection(db, "classroom"));
 
-          const classroomsData = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const classroomsData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
 
-          setClassrooms(classroomsData);
-        } catch (error) {
-          console.error("Error getting documents:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchClassrooms();
+        setClassrooms(classroomsData);
+        setLoading(false);
+      }, (error) => {
+          console.error("Error getting documents in real-time:", error);
+          setLoading(false); 
+      });
+      
+      // Clean up subscription on unmount
+      return () => unsubscribe();
     } else {
-      setLoading(false); // ถ้าไม่ใช่อาจารย์ให้หยุดโหลด
+      setLoading(false); 
     }
   }, [userStatus]);
 
@@ -103,14 +116,24 @@ function ClassroomList() {
                   component="img"
                   alt={classroom.info?.name}
                   height="140"
-                  image={classroom.info?.photo || "https://via.placeholder.com/150"}
+                  image={
+                    classroom.info?.photo || "https://via.placeholder.com/150"
+                  }
                   sx={{ objectFit: "cover" }}
                 />
                 <CardContent>
-                  <Typography variant="h6" component="div" sx={{ fontWeight: "bold" }}>
+                  <Typography
+                    variant="h6"
+                    component="div"
+                    sx={{ fontWeight: "bold" }}
+                  >
                     {classroom.info?.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ marginTop: 1 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ marginTop: 1 }}
+                  >
                     รหัสวิชา: {classroom.info?.code}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -118,7 +141,10 @@ function ClassroomList() {
                   </Typography>
 
                   <Box sx={{ marginTop: 2 }}>
-                    <Link to={`/addstudent/${classroom.id}`} style={{ textDecoration: "none" }}>
+                    <Link
+                      to={`/addstudent/${classroom.id}`}
+                      style={{ textDecoration: "none" }}
+                    >
                       <Button variant="contained" color="primary">
                         เพิ่มนักเรียน
                       </Button>

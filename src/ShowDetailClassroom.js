@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { db } from "./firebase";
 import { QRCodeCanvas } from "qrcode.react";
-import { collection, doc, getDocs, getDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const ShowDetailClassroom = () => {
@@ -14,6 +14,7 @@ const ShowDetailClassroom = () => {
   useEffect(() => {
     if (!cid) return;
 
+    // ดึงข้อมูลห้องเรียน
     const fetchClassroomData = async () => {
       try {
         const classroomRef = doc(db, "classroom", cid);
@@ -22,51 +23,48 @@ const ShowDetailClassroom = () => {
         if (classroomSnap.exists()) {
           setClassroom(classroomSnap.data());
         }
-
-        const studentsRef = collection(db, "classroom", cid, "students");
-        const studentsSnap = await getDocs(studentsRef);
-        const studentsList = studentsSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setStudents(studentsList);
-
-        const checkinRef = collection(db, "classroom", cid, "checkin");
-        const checkinSnap = await getDocs(checkinRef);
-        if (!checkinSnap.empty) {
-          const lastCheckin = checkinSnap.docs[checkinSnap.docs.length - 1];
-          const lastCheckinCode = await getDoc(doc(db, `classroom/${cid}/checkin/${lastCheckin.id}`));
-
-          if (lastCheckinCode.exists()) {
-            setCheckinCode(lastCheckinCode.data().code);
-          }
-        }
       } catch (error) {
         console.error("Error fetching classroom data:", error.message);
       }
     };
 
     fetchClassroomData();
+
+    // 🔹 ดึงข้อมูลนักเรียนแบบ Real-time
+    const studentsRef = collection(db, "classroom", cid, "students");
+    const unsubscribeStudents = onSnapshot(studentsRef, (snapshot) => {
+      const studentsList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setStudents(studentsList);
+    });
+
+    // 🔹 ดึงรหัสเช็คอินแบบ Real-time
+    const checkinRef = collection(db, "classroom", cid, "checkin");
+    const unsubscribeCheckin = onSnapshot(checkinRef, (snapshot) => {
+      if (!snapshot.empty) {
+        const lastCheckin = snapshot.docs[snapshot.docs.length - 1];
+        setCheckinCode(lastCheckin.data().code);
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      unsubscribeStudents();
+      unsubscribeCheckin();
+    };
   }, [cid]);
 
-  // 🔹 ฟังก์ชันอัปเดตสถานะนักเรียน
+  // ✅ ฟังก์ชันอัปเดตสถานะนักเรียน
   const handleVerifyStudent = async (studentId) => {
     try {
       const studentRef = doc(db, "classroom", cid, "students", studentId);
       await updateDoc(studentRef, { status: 1 });
-
-      // อัปเดตค่าใน State เพื่อแสดงผลทันที
-      setStudents((prevStudents) =>
-        prevStudents.map((student) =>
-          student.id === studentId ? { ...student, status: 1 } : student
-        )
-      );
     } catch (error) {
       console.error("Error updating student status:", error.message);
     }
   };
-
-  
 
   if (!cid) {
     return <p className="text-danger text-center">Invalid Classroom ID. Please check your Classroom ID.</p>;
@@ -75,13 +73,13 @@ const ShowDetailClassroom = () => {
   return (
     <div className="container mt-5">
       <h2 className="text-center mb-4 fw-bold text-primary">📝 รายละเอียดห้องเรียน</h2>
-  
+
       {classroom && (
         <div className="card shadow-lg mb-4 border-0">
           <div className="card-body p-4">
             <h3 className="text-center text-dark fw-bold">{classroom.info?.name}</h3>
             <p className="text-muted text-center fs-5">ห้องเรียน: {classroom.info?.code}</p>
-  
+
             <div className="d-flex flex-column flex-md-row align-items-center justify-content-center">
               <div
                 className="rounded shadow-lg"
@@ -101,7 +99,7 @@ const ShowDetailClassroom = () => {
           </div>
         </div>
       )}
-  
+
       <div className="card shadow-lg border-0">
         <div className="card-body">
           <h4 className="text-center mb-3 fw-bold text-dark">📋 รายชื่อนักเรียน</h4>
@@ -150,7 +148,6 @@ const ShowDetailClassroom = () => {
       </div>
     </div>
   );
-  
 };
 
 export default ShowDetailClassroom;

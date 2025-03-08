@@ -41,9 +41,17 @@ function Navbar() {
   return (
     <AppBar position="static" sx={{ backgroundColor: "#3f51b5" }}>
       <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: "bold" }}>
-          ระบบจัดการห้องเรียน
-        </Typography>
+      <Typography
+      variant="h6"
+      sx={{
+        flexGrow: 1,
+        fontWeight: "bold",
+        cursor: "pointer",
+      }}
+      onClick={() => navigate("/home")}
+    >
+      ระบบจัดการห้องเรียน
+    </Typography>
         {user ? (
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <Typography variant="body1" sx={{ marginRight: 2, color: "#fff" }}>

@@ -17,6 +17,7 @@ import ShowDetailClassroom from './ShowDetailClassroom';
 import CheckInManagement from './CheckInManagement'; 
 import CreateQuestion from './CreateQuestion'; 
 import QuestionAnswers from './QuestionAnswers'; // ปรับเส้นทางตามโครงสร้างไฟล์ของคุณ
+import EditClassroom from './EditClassroom'; 
 
 // เพิ่มในส่วนของการกำหนดเส
 
@@ -41,8 +42,10 @@ function App() {
         <Route path="/showdetail/:cid" element={<ShowDetailClassroom />} />
         <Route path="/checkinmanagement/:cid/checkin/:cno" element={<CheckInManagement />} />
         <Route path="/question/:cid/checkin/:cno" element={<CreateQuestion />} />
-        <Route path="/classroom/:cid/checkin/:checkInId/answers" element={<QuestionAnswers />} />
-          
+        <Route path="/questionAnswers/:cid/checkin/:checkInId/answers" element={<QuestionAnswers />} />
+        <Route path="/classroom/:cid/edit" element={<EditClassroom />} />
+
+      
       </Routes>
     </Router>
   );

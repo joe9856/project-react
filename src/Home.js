@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { db, auth } from "./firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { Card, CardContent, CardMedia, Grid, Typography, Box, CircularProgress, Button } from "@mui/material";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { Edit, Delete } from "@mui/icons-material";
+import { IconButton } from "@mui/material";
+import { doc, deleteDoc } from 'firebase/firestore';
 
 function Home() {
   const [user, setUser] = useState(null);
@@ -12,7 +15,8 @@ function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    // ตรวจสอบสถานะการล็อกอิน
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
       } else {
@@ -21,24 +25,24 @@ function Home() {
       }
     });
 
-    const fetchClassrooms = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "classroom"));
-        const classroomsData = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setClassrooms(classroomsData);
-      } catch (error) {
-        console.error("Error getting documents:", error);
-      } finally {
-        setLoading(false);
-      }
+    // ดึงข้อมูลห้องเรียนแบบ realtime
+    const unsubscribeClassrooms = onSnapshot(collection(db, "classroom"), (querySnapshot) => {
+      const classroomsData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setClassrooms(classroomsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error getting documents:", error);
+      setLoading(false);
+    });
+
+    // คืนค่า unsubscribe เมื่อ component unmount
+    return () => {
+      unsubscribeAuth();
+      unsubscribeClassrooms();
     };
-
-    fetchClassrooms();
-
-    return () => unsubscribe();
   }, [navigate]);
 
   const handleLogout = async () => {
@@ -59,22 +63,50 @@ function Home() {
   };
 
   const handleGoToCreateCheckInTeacher = (classroomId) => {
-    navigate(`/createcheckin/${classroomId}`); // เชื่อมโยงไปยังหน้าการเช็คชื่อ
+    navigate(`/createcheckin/${classroomId}`);
   };
 
   const handleShowCheckInTeacher = (classroomId) => {
-    navigate(`/showcheckin/${classroomId}`); // เชื่อมโยงไปยังหน้าการเช็คชื่อ
+    navigate(`/showcheckin/${classroomId}`);
   };
 
   const handleShowDetail = (classroomId) => {
-    navigate(`/showdetail/${classroomId}`); // เชื่อมโยงไปยังหน้าการเช็คชื่อ
+    navigate(`/showdetail/${classroomId}`);
   };
 
-  // สมมติให้มีค่า cno แบบ static หรือมาจากการเลือกของผู้ใช้
-const goToCreateQuestion = (cid, cno) => {
-  navigate(`/question/${cid}/checkin/${cno}`);
-};
+  const goToCreateQuestion = (cid, cno) => {
+    navigate(`/question/${cid}/checkin/${cno}`);
+  };
+
+  const handleEditClick = (classroomId) => {
+    console.log("Edit Classroom ID: ", classroomId);
+    navigate(`/classroom/${classroomId}/edit`);
+  };
+
+  const handleDeleteClassroom = async (classroomId) => {
+    const confirmDelete = window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบห้องเรียนนี้?");
+    if (!confirmDelete) return;
   
+    try {
+      setLoading(true); // แสดง loading indicator ระหว่างลบข้อมูล
+      
+      // อ้างถึงเอกสารห้องเรียนที่ต้องการลบ
+      const classroomRef = doc(db, "classroom", classroomId);
+  
+      // ลบเอกสาร
+      await deleteDoc(classroomRef);
+      
+      // อัพเดท state โดยตรงเพื่อให้ UI อัพเดททันที (ไม่ต้องรอ onSnapshot)
+      setClassrooms(prevClassrooms => prevClassrooms.filter(classroom => classroom.id !== classroomId));
+      
+      setLoading(false);
+      alert("ลบห้องเรียนสำเร็จ!");
+    } catch (error) {
+      console.error("เกิดข้อผิดพลาดในการลบห้องเรียน: ", error);
+      setLoading(false);
+      alert("ไม่สามารถลบห้องเรียนได้: " + error.message);
+    }
+  };
 
   if (loading) {
     return (
@@ -104,7 +136,7 @@ const goToCreateQuestion = (cid, cno) => {
       </Box>
 
   
-      <Box sx={{ border: "2px solidrgb(226, 226, 226)", borderRadius: "8px", padding: "8px", maxWidth: "300px", margin: "20px 0", boxShadow: 2 }}>
+      <Box sx={{ border: "2px solid rgb(226, 226, 226)", borderRadius: "8px", padding: "8px", maxWidth: "300px", margin: "20px 0", boxShadow: 2 }}>
         <Typography variant="h6" gutterBottom align="center" color="textPrimary">
           ข้อมูลห้องเรียนทั้งหมด
         </Typography>
@@ -138,6 +170,7 @@ const goToCreateQuestion = (cid, cno) => {
                   maxWidth: 345,
                   boxShadow: 4,
                   borderRadius: 3,
+                  position: "relative", 
                   transition: "transform 0.3s, box-shadow 0.3s",
                   "&:hover": {
                     transform: "scale(1.05)",
@@ -145,6 +178,51 @@ const goToCreateQuestion = (cid, cno) => {
                   },
                 }}
               >
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  display: "flex",
+                  gap: 2, // เพิ่มระยะห่างระหว่างไอคอนให้ชัดเจนยิ่งขึ้น
+                }}
+              >
+                  <IconButton
+                    size="medium" // ขยายขนาดไอคอนให้ใหญ่ขึ้น
+                    color="primary"
+                    sx={{
+                      backgroundColor: "white", // เพิ่มพื้นหลังสีขาวให้ไอคอน
+                      borderRadius: "50%", // ทำให้ปุ่มเป็นวงกลม
+                      "&:hover": {
+                        backgroundColor: "#f0f0f0", // เปลี่ยนสีพื้นหลังเมื่อ hover
+                      },
+                    }}
+                    onClick={() => handleEditClick(classroom.id)}
+                  >
+                    <Edit fontSize="medium" sx={{ color: "#1976d2" }} /> {/* ไอคอนสีฟ้าและขนาดปานกลาง */}
+                  </IconButton>
+
+                  {/* ปุ่มลบ */}
+                  <IconButton
+                    size="medium"
+                    aria-label="delete"
+                    onClick={(e) => {
+                      e.stopPropagation(); // ป้องกันการ bubble ของ event
+                      handleDeleteClassroom(classroom.id);
+                    }}
+                    sx={{
+                      backgroundColor: "white",
+                      borderRadius: "50%",
+                      zIndex: 10, // เพิ่ม z-index ให้สูงขึ้น
+                      "&:hover": {
+                        backgroundColor: "#f8d7da",
+                      },
+                    }}
+                  >
+                    <Delete fontSize="medium" sx={{ color: "#d32f2f" }} />
+                  </IconButton>
+                </Box>
+
                 <CardMedia
                   component="img"
                   alt={classroom.info?.name}
@@ -162,54 +240,19 @@ const goToCreateQuestion = (cid, cno) => {
                   <Typography variant="body2" color="text.secondary">
                     ห้องเรียน: {classroom.info?.room}
                   </Typography>
-  
-                  {/* ปุ่มทั้งหมดถูกจัดเรียงให้สวยขึ้น */}
+
+                  {/* ปุ่มด้านล่าง */}
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, marginTop: 2 }}>
-                    <Button
-                      variant="contained"
-                      color="info"
-                      onClick={() => handleShowDetail(classroom.id)}
-                      sx={{
-                        fontWeight: "bold",
-                        "&:hover": { backgroundColor: "#0288d1" },
-                      }}
-                    >
+                    <Button variant="contained" color="info" onClick={() => handleShowDetail(classroom.id)}>
                       ℹ️ ดูรายละเอียดวิชา
                     </Button>
-  
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      onClick={() => goToCreateQuestion(classroom.id, 1)}
-                      sx={{
-                        fontWeight: "bold",
-                        "&:hover": { backgroundColor: "#6d1b7b" },
-                      }}
-                    >
+                    <Button variant="contained" color="secondary" onClick={() => goToCreateQuestion(classroom.id, 1)}>
                       ✍️ เพิ่มคำถาม
                     </Button>
-  
-                    <Button
-                      variant="contained"
-                      color="warning"
-                      onClick={() => handleGoToCreateCheckInTeacher(classroom.id)}
-                      sx={{
-                        fontWeight: "bold",
-                        "&:hover": { backgroundColor: "#f57c00" },
-                      }}
-                    >
+                    <Button variant="contained" color="warning" onClick={() => handleGoToCreateCheckInTeacher(classroom.id)}>
                       ✅ สร้างเช็คชื่อ
                     </Button>
-  
-                    <Button
-                      variant="contained"
-                      color="error"
-                      onClick={() => handleShowCheckInTeacher(classroom.id)}
-                      sx={{
-                        fontWeight: "bold",
-                        "&:hover": { backgroundColor: "#d32f2f" },
-                      }}
-                    >
+                    <Button variant="contained" color="error" onClick={() => handleShowCheckInTeacher(classroom.id)}>
                       📊 ดูผลการเช็คชื่อ
                     </Button>
                   </Box>
@@ -227,7 +270,6 @@ const goToCreateQuestion = (cid, cno) => {
       )}
     </div>
   );
-  
 }
 
 export default Home;
