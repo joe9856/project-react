@@ -24,7 +24,7 @@ import EditClassroom from './EditClassroom';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/project-react">
       <Navbar /> {/* แสดง Navbar */}
       <Routes>
         <Route path="/" element={<Login />} />
