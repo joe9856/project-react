@@ -478,22 +478,6 @@ const loadClassroomStudents = () => {
         </Typography>
       </Box>
 
-      {/* แสดงปุ่มเช็คอินสำหรับนักเรียน */}
-      {currentUser && !isTeacher && (
-        <Box sx={{ mb: 3 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleCheckin}
-            disabled={students.some((s) => s.id === currentUser.uid)}
-          >
-            {students.some((s) => s.id === currentUser.uid)
-              ? "คุณได้เช็คชื่อไปแล้ว"
-              : "เช็คชื่อเข้าเรียน"}
-          </Button>
-        </Box>
-      )}
-
       {/* ตารางแสดงข้อมูลนักเรียน */}
       <TableContainer>
         <Table>

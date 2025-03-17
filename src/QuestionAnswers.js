@@ -8,26 +8,49 @@ const QuestionAnswers = () => {
   const [classroomName, setClassroomName] = useState('');
   const [questions, setQuestions] = useState([]);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
-  const [isQuestionVisible, setIsQuestionVisible] = useState(true);
+  const [questionsVisibility, setQuestionsVisibility] = useState({});
+  const [globalVisibility, setGlobalVisibility] = useState(false);
   const [answers, setAnswers] = useState([]);
+  const [students, setStudents] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // ดึงข้อมูลนักเรียนทั้งหมด
   useEffect(() => {
-    const fetchQuestionShow = async () => {
+    const fetchStudents = async () => {
       try {
-        const docRef = doc(db, `classroom/${cid}/checkin/${checkInId}`);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          setIsQuestionVisible(docSnap.data().question_show ?? true); // Use default value as true
-        }
+        const studentsRef = collection(db, `classroom/${cid}/checkin/${checkInId}/students`);
+        const studentsSnapshot = await getDocs(studentsRef);
+        
+        const studentsData = {};
+        studentsSnapshot.forEach(doc => {
+          studentsData[doc.id] = doc.data();
+        });
+        
+        setStudents(studentsData);
       } catch (err) {
-        console.error('Error fetching question visibility:', err);
+        console.error('Error fetching students data:', err);
       }
     };
 
-    fetchQuestionShow();
+    fetchStudents();
+  }, [cid, checkInId]);
+
+  // ดึงข้อมูลสถานะการแสดงคำถามหลัก
+  useEffect(() => {
+    const checkInRef = doc(db, `classroom/${cid}/checkin`, checkInId);
+    
+    const unsubscribe = onSnapshot(checkInRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data();
+        setGlobalVisibility(data.question_show ?? false);
+        setClassroomName(data.className || '');
+      }
+    }, (error) => {
+      console.error("Error getting checkin data:", error);
+    });
+
+    return () => unsubscribe();
   }, [cid, checkInId]);
 
   useEffect(() => {
@@ -38,15 +61,45 @@ const QuestionAnswers = () => {
         const questionSnap = await getDocs(questionsRef);
 
         if (!questionSnap.empty) {
+          const visibilityPromises = questionSnap.docs.map(async (questionDoc) => {
+            const questionId = questionDoc.id;
+            const questionSettingsRef = doc(db, `classroom/${cid}/checkin/${checkInId}/questions/${questionId}`);
+            const questionSettingsSnap = await getDoc(questionSettingsRef);
+            
+            return {
+              questionId,
+              isVisible: questionSettingsSnap.data()?.question_show !== false
+            };
+          });
+
+          const visibilityResults = await Promise.all(visibilityPromises);
+          const visibilityMap = {};
+          visibilityResults.forEach(item => {
+            visibilityMap[item.questionId] = item.isVisible;
+          });
+          
+          setQuestionsVisibility(visibilityMap);
+
           const fetchedQuestions = questionSnap.docs.map(doc => {
             const data = doc.data();
             return {
-              id: data.question_no || 'ไม่มีหมายเลขคำถาม',
+              id: doc.id,
+              no: data.question_no || 'ไม่มีหมายเลขคำถาม',
               text: data.question_text || 'ไม่มีข้อความคำถาม',
             };
           });
 
+          // เรียงลำดับตามหมายเลขคำถาม
+          fetchedQuestions.sort((a, b) => {
+            const noA = parseInt(a.no) || 0;
+            const noB = parseInt(b.no) || 0;
+            return noA - noB;
+          });
+
           setQuestions(fetchedQuestions);
+          if (fetchedQuestions.length > 0 && !selectedQuestion) {
+            setSelectedQuestion(fetchedQuestions[0].id);
+          }
         } else {
           setQuestions([]);
         }
@@ -70,7 +123,8 @@ const QuestionAnswers = () => {
       collection(db, answersPath),
       (snapshot) => {
         const answersData = snapshot.docs.map(doc => ({
-          studentId: doc.id,
+          id: doc.id,
+          studentId: doc.data().uid || doc.id,
           text: doc.data().answer_text || 'ไม่มีคำตอบ',
           timestamp: doc.data().timestamp ? new Date(doc.data().timestamp.toDate()) : null
         }));
@@ -87,17 +141,40 @@ const QuestionAnswers = () => {
     return () => unsubscribe();
   }, [cid, checkInId, selectedQuestion]);
 
-  const toggleQuestionVisibility = async () => {
+  // ฟังก์ชันสลับการแสดงคำถามแต่ละข้อ
+  const toggleQuestionVisibility = async (questionId) => {
     try {
-      const checkInDocRef = doc(db, `classroom/${cid}/checkin/${checkInId}`);
-      await updateDoc(checkInDocRef, {
-        question_show: !isQuestionVisible,
+      const newVisibility = !questionsVisibility[questionId];
+      
+      const questionRef = doc(db, `classroom/${cid}/checkin/${checkInId}/questions/${questionId}`);
+      await updateDoc(questionRef, {
+        question_show: newVisibility
       });
-
-      setIsQuestionVisible(!isQuestionVisible);
+      
+      setQuestionsVisibility(prevState => ({
+        ...prevState,
+        [questionId]: newVisibility
+      }));
     } catch (err) {
       console.error('Error updating question visibility:', err);
       setError('เกิดข้อผิดพลาดในการอัปเดตสถานะการแสดงคำถาม');
+    }
+  };
+
+  // ฟังก์ชันสลับการแสดงคำถามทั้งหมด
+  const toggleGlobalVisibility = async () => {
+    try {
+      const newVisibility = !globalVisibility;
+      
+      const checkInRef = doc(db, `classroom/${cid}/checkin`, checkInId);
+      await updateDoc(checkInRef, {
+        question_show: newVisibility
+      });
+
+      setGlobalVisibility(newVisibility);
+    } catch (err) {
+      console.error('Error updating global question visibility:', err);
+      setError('เกิดข้อผิดพลาดในการอัปเดตสถานะการแสดงคำถามหลัก');
     }
   };
 
@@ -111,6 +188,13 @@ const QuestionAnswers = () => {
       minute: '2-digit',
       second: '2-digit'
     });
+  };
+
+  const getStudentName = (uid) => {
+    if (students[uid]) {
+      return students[uid].name || students[uid].displayName || uid;
+    }
+    return `ไม่พบข้อมูล (${uid})`;
   };
 
   return (
@@ -144,7 +228,12 @@ const QuestionAnswers = () => {
                       onClick={() => setSelectedQuestion(question.id)}
                       style={{ backgroundColor: selectedQuestion === question.id ? '#e9ecef' : 'white' }}
                     >
-                      คำถามที่ {question.id}
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span>คำถามที่ {question.no}</span>
+                        <span className={`badge ${questionsVisibility[question.id] ? 'bg-success' : 'bg-danger'}`}>
+                          {questionsVisibility[question.id] ? 'แสดง' : 'ซ่อน'}
+                        </span>
+                      </div>
                     </button>
                   ))
                 ) : (
@@ -158,16 +247,21 @@ const QuestionAnswers = () => {
             {selectedQuestion && (
               <div className="card mb-4">
                 <div className="card-header d-flex justify-content-between align-items-center" style={{ backgroundColor: '#6c757d', color: 'white' }}>
-                  <h5 className="mb-0">คำถามที่ {selectedQuestion}</h5>
-                  <button onClick={toggleQuestionVisibility} className="btn btn-light btn-sm">
-                    {isQuestionVisible ? 'ซ่อน' : 'แสดง'}
+                  <h5 className="mb-0">คำถามที่ {questions.find(q => q.id === selectedQuestion)?.no}</h5>
+                  <button 
+                    onClick={() => toggleQuestionVisibility(selectedQuestion)} 
+                    className={`btn ${questionsVisibility[selectedQuestion] ? 'btn-danger' : 'btn-success'} btn-sm`}
+                  >
+                    {questionsVisibility[selectedQuestion] ? 'ซ่อน' : 'แสดง'}
                   </button>
                 </div>
-                {isQuestionVisible && (
-                  <div className="card-body">
-                    <p className="card-text">{questions.find(q => q.id === selectedQuestion)?.text || 'ไม่พบข้อมูลคำถาม'}</p>
+                <div className="card-body">
+                  <p className="card-text">{questions.find(q => q.id === selectedQuestion)?.text || 'ไม่พบข้อมูลคำถาม'}</p>
+                  
+                  <div className="alert alert-info">
+                    <strong>สถานะคำถาม:</strong> {questionsVisibility[selectedQuestion] ? 'กำลังแสดงให้นักเรียนเห็น' : 'ซ่อนจากนักเรียน'}
                   </div>
-                )}
+                </div>
               </div>
             )}
 
@@ -183,16 +277,16 @@ const QuestionAnswers = () => {
                       <thead>
                         <tr>
                           <th scope="col">#</th>
-                          <th scope="col">รหัสนักศึกษา</th>
+                          <th scope="col">ชื่อนักศึกษา</th>
                           <th scope="col">คำตอบ</th>
                           <th scope="col">เวลา</th>
                         </tr>
                       </thead>
                       <tbody>
                         {answers.map((answer, index) => (
-                          <tr key={answer.studentId}>
+                          <tr key={answer.id}>
                             <th scope="row">{index + 1}</th>
-                            <td>{answer.studentId}</td>
+                            <td>{getStudentName(answer.studentId)}</td>
                             <td>{answer.text}</td>
                             <td>{formatDate(answer.timestamp)}</td>
                           </tr>

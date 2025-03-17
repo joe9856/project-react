@@ -217,7 +217,7 @@ const ShowCheckIn = () => {
             {checkIns.map((checkIn) => (
               <TableRow key={checkIn.id} hover>
                 <TableCell>{checkIn.code}</TableCell>
-                <TableCell>{new Date(checkIn.date).toLocaleString()}</TableCell>
+                <TableCell>{checkIn.localISOTime}</TableCell>
                 <TableCell>
                   {checkIn.status === 0 && (
                     <Chip label="ยังไม่เริ่ม" color="default" />
