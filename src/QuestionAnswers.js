@@ -259,7 +259,7 @@ const QuestionAnswers = () => {
                   <p className="card-text">{questions.find(q => q.id === selectedQuestion)?.text || 'ไม่พบข้อมูลคำถาม'}</p>
                   
                   <div className="alert alert-info">
-                    <strong>สถานะคำถาม:</strong> {questionsVisibility[selectedQuestion] ? 'กำลังแสดงให้นักเรียนเห็น' : 'ซ่อนจากนักเรียน'}
+                    <strong>สถานะคำถาม: </strong> {questionsVisibility[selectedQuestion] ? 'กำลังแสดงให้นักเรียนเห็น' : 'ซ่อนจากนักเรียน'}
                   </div>
                 </div>
               </div>
@@ -276,7 +276,7 @@ const QuestionAnswers = () => {
                     <table className="table table-hover mb-0">
                       <thead>
                         <tr>
-                          <th scope="col">#</th>
+                          <th scope="col"> # </th>
                           <th scope="col">ชื่อนักศึกษา</th>
                           <th scope="col">คำตอบ</th>
                           <th scope="col">เวลา</th>
